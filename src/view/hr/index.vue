@@ -67,7 +67,12 @@
     </el-upload>
     <!-- 简历文件名列表 -->
     <el-table :data="fileList" style="width: 100%; margin-top: 20px;">
-      <el-table-column prop="file_name" label="文件名" />
+      <el-table-column prop="file_name" label="文件名" min-width="80%" />
+      <el-table-column label="操作" min-width="20%" align="center">
+        <template #default="scope">
+          <el-button type="primary" size="small" @click="changeStatus(scope.row)">已确认</el-button>
+        </template>
+      </el-table-column>
     </el-table>
     <el-pagination
       style="margin-top: 10px; text-align: right"
@@ -83,7 +88,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
 const uploadUrl = ref('http://127.0.0.1:8080/upload-file')
@@ -146,6 +151,37 @@ const handleSuccess = async (response) => {
     ElMessage.error('二次请求失败')
   }
 }
+
+const changeStatus = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要修改该条记录的状态吗？',
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    // 用户点击了确定，发起请求（改为GET请求）
+    await axios.get('http://127.0.0.1:8080/lark/plugin/hr/update_status', {
+      params: {
+        cv_id: row.id,
+        status: 'processed' // 或你想要的状态
+      }
+    })
+    ElMessage.success('状态修改成功')
+    fetchResumeList()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('状态修改失败')
+    }
+    // 用户取消时不提示
+  }
+}
+
+// 在模板中使用时：
+// <el-button :type="getButtonTypeByStatus(row.status)" @click="changeStatus(row)">修改状态</el-button>
 
 onMounted(() => {
   fetchResumeList()
