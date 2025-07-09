@@ -2,9 +2,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   {
-    path: '/upload',
-    name: 'upload',
-    component: () => import('../view/upload/index.vue')
+    path: '/hr-plugin',
+    name: 'hr-plugin',
+    component: () => import('../view/hr/index.vue')
   }
 ]
 
