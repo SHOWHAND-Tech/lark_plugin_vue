@@ -1,0 +1,174 @@
+<script>
+  import { bitable } from '@lark-base-open/js-sdk';
+  import { ref, onMounted } from 'vue';
+  import {
+    ElButton,
+    ElForm,
+    ElFormItem,
+    ElSelect,
+    ElOption,
+  } from 'element-plus';
+
+  export default {
+    components: {
+      ElButton,
+      ElForm,
+      ElFormItem,
+      ElSelect,
+      ElOption,
+    },
+    setup() {
+      const formData = ref({ table: '' });
+      const tableMetaList = ref([]);
+
+      const addRecord = async () => {
+        const tableId = formData.value.table;
+        if (tableId) {
+          const table = await bitable.base.getTableById(tableId);
+          table.addRecord({ fields: {} });
+        }
+      };
+
+      onMounted(async () => {
+        const [tableList, selection] = await Promise.all([bitable.base.getTableMetaList(), bitable.base.getSelection()]);
+        formData.value.table = selection.tableId;
+        tableMetaList.value = tableList;
+      });
+
+      return {
+        formData,
+        tableMetaList,
+        addRecord,
+      };
+    },
+  };
+</script>
+
+<template>
+  <el-header style="display: flex; align-items: center; justify-content: center; height: 60px;">
+    <h1 style="margin: 0; font-size: 16px; font-weight: bold; text-align: center; width: 100%;">上传数据</h1>
+  </el-header>
+  <el-main>
+    <el-upload
+      class="upload-demo"
+      drag
+      :action="uploadUrl"
+      :show-file-list="false"
+      :before-upload="beforeUpload"
+      :on-success="handleSuccess"
+      :on-error="handleError"
+      :headers="headers"
+      :data="uploadData"
+      accept=".zip"
+    >
+      <i class="el-icon-upload"></i>
+      <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+      <div class="el-upload__tip" slot="tip">只能上传.zip文件</div>
+    </el-upload>
+    <!-- 简历文件名列表 -->
+    <el-table :data="fileList" style="width: 100%; margin-top: 20px;">
+      <el-table-column prop="file_name" label="文件名" />
+    </el-table>
+    <el-pagination
+      style="margin-top: 10px; text-align: right"
+      background
+      layout="prev, pager, next"
+      :current-page="page"
+      :page-size="pageSize"
+      :total="total"
+      @current-change="val => { page = val; fetchResumeList() }"
+    />
+  </el-main>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import axios from 'axios'
+
+const uploadUrl = ref('http://127.0.0.1:8080/upload-file')
+
+// 可选：自定义请求头
+const headers = ref({})
+const uploadData = ref({})
+
+const beforeUpload = (file) => {
+  const isZip = file.type === 'application/zip' || file.name.endsWith('.zip')
+  if (!isZip) {
+    ElMessage.error('只能上传.zip文件')
+  }
+  return isZip
+}
+
+// 分页相关
+const fileList = ref([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(20)
+
+const fetchResumeList = async () => {
+  try {
+    const res = await axios.get('http://127.0.0.1:8080/lark/plugin/hr/list', {
+      params: {
+        page: page.value,
+        size: pageSize.value,
+        status: "error"
+      }
+    })
+    if (res.data.status === 'success') {
+      fileList.value = res.data.data.items
+      total.value = res.data.data.total
+      page.value = res.data.data.page
+      pageSize.value = res.data.data.page_size
+    }
+  } catch (e) {
+    ElMessage.error('获取简历列表失败')
+  }
+}
+
+// 上传成功回调
+const handleSuccess = async (response) => {
+  // 假设后端返回 { status, message, token }
+  const token = response?.token
+  if (!token) {
+    ElMessage.error('上传返回结果无效')
+    return
+  }
+  try {
+    // 请求本地8080端口接口
+    const res = await axios.get(`http://127.0.0.1:8080/lark/plugin/hr/${token}`)
+    // 你可以根据返回内容做后续处理
+    console.log('二次请求结果:', res.data)
+    ElMessage.success('处理成功')
+    // 上传成功后刷新简历列表
+    await fetchResumeList()
+  } catch (e) {
+    ElMessage.error('二次请求失败')
+  }
+}
+
+onMounted(() => {
+  fetchResumeList()
+})
+
+</script>
+
+<style scoped>
+el-header {
+  width: 100%;
+  height: 60px;
+  padding: 0;
+  /* 让 header 内部内容居中 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+el-header h1 {
+  margin: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 16px;
+  font-weight: bold;
+}
+</style>
