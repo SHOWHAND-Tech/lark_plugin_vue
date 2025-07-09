@@ -19,3 +19,5 @@ Please npm run build first, submit it together with the dist directory, and then
 ## 发布
 请先npm run build，连同dist目录一起提交，然后再填写表单：
 [共享表单](https://feishu.feishu.cn/share/base/form/shrcnGFgOOsFGew3SDZHPhzkM0e)
+
+[![Deploy on Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SHOWHAND-Tech/lark_plugin_vue)
