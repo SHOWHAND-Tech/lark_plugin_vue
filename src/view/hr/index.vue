@@ -91,7 +91,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
-const uploadUrl = ref('http://192.168.110.253:8901/upload-file')
+const uploadUrl = ref('/api/upload-file')
 
 const headers = ref({})
 const uploadData = ref({})
@@ -111,7 +111,7 @@ const pageSize = ref(20)
 
 const fetchResumeList = async () => {
   try {
-    const res = await axios.get('http://192.168.110.253:8901/lark/plugin/hr/list', {
+    const res = await axios.get('/api/lark/plugin/hr/list', {
       params: {
         page: page.value,
         size: pageSize.value,
@@ -136,7 +136,7 @@ const handleSuccess = async (response) => {
     return
   }
   try {
-    const res = await axios.get(`http://192.168.110.253:8901/lark/plugin/hr/${token}`)
+    const res = await axios.get(`/api/lark/plugin/hr/${token}`)
     console.log('二次请求结果:', res.data)
     ElMessage.success('处理成功')
     await fetchResumeList()
@@ -156,7 +156,7 @@ const changeStatus = async (row) => {
         type: 'warning',
       }
     )
-    await axios.get('http://192.168.110.253:8901/lark/plugin/hr/update_status', {
+    await axios.get('/api/lark/plugin/hr/update_status', {
       params: {
         cv_id: row.id,
         status: 'processed'
