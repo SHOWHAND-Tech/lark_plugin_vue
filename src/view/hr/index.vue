@@ -91,9 +91,8 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
-const uploadUrl = ref('http://127.0.0.1:8080/upload-file')
+const uploadUrl = ref('http://192.168.110.253:8901/upload-file')
 
-// 可选：自定义请求头
 const headers = ref({})
 const uploadData = ref({})
 
@@ -105,7 +104,6 @@ const beforeUpload = (file) => {
   return isZip
 }
 
-// 分页相关
 const fileList = ref([])
 const total = ref(0)
 const page = ref(1)
@@ -113,7 +111,7 @@ const pageSize = ref(20)
 
 const fetchResumeList = async () => {
   try {
-    const res = await axios.get('http://127.0.0.1:8080/lark/plugin/hr/list', {
+    const res = await axios.get('http://192.168.110.253:8901/lark/plugin/hr/list', {
       params: {
         page: page.value,
         size: pageSize.value,
@@ -131,21 +129,16 @@ const fetchResumeList = async () => {
   }
 }
 
-// 上传成功回调
 const handleSuccess = async (response) => {
-  // 假设后端返回 { status, message, token }
   const token = response?.token
   if (!token) {
     ElMessage.error('上传返回结果无效')
     return
   }
   try {
-    // 请求本地8080端口接口
-    const res = await axios.get(`http://127.0.0.1:8080/lark/plugin/hr/${token}`)
-    // 你可以根据返回内容做后续处理
+    const res = await axios.get(`http://192.168.110.253:8901/lark/plugin/hr/${token}`)
     console.log('二次请求结果:', res.data)
     ElMessage.success('处理成功')
-    // 上传成功后刷新简历列表
     await fetchResumeList()
   } catch (e) {
     ElMessage.error('二次请求失败')
@@ -163,11 +156,10 @@ const changeStatus = async (row) => {
         type: 'warning',
       }
     )
-    // 用户点击了确定，发起请求（改为GET请求）
-    await axios.get('http://127.0.0.1:8080/lark/plugin/hr/update_status', {
+    await axios.get('http://192.168.110.253:8901/lark/plugin/hr/update_status', {
       params: {
         cv_id: row.id,
-        status: 'processed' // 或你想要的状态
+        status: 'processed'
       }
     })
     ElMessage.success('状态修改成功')
@@ -176,12 +168,8 @@ const changeStatus = async (row) => {
     if (e !== 'cancel') {
       ElMessage.error('状态修改失败')
     }
-    // 用户取消时不提示
   }
 }
-
-// 在模板中使用时：
-// <el-button :type="getButtonTypeByStatus(row.status)" @click="changeStatus(row)">修改状态</el-button>
 
 onMounted(() => {
   fetchResumeList()
