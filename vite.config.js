@@ -9,7 +9,6 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 // https://vitejs.dev/config/
 export default defineConfig({
   server: {
-    host: true,
     proxy: {
       '/api':{
         target: 'http://43.134.73.124:9012',
