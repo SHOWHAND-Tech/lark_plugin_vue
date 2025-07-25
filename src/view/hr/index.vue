@@ -8,6 +8,7 @@
     ElSelect,
     ElOption,
   } from 'element-plus';
+  import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 
   export default {
     components: {
@@ -49,6 +50,7 @@
     <h1 style="margin: 0; font-size: 16px; font-weight: bold; text-align: center; width: 100%;">上传数据</h1>
   </el-header>
   <el-main>
+    <!-- 上传区域 -->
     <el-upload
       class="upload-demo"
       drag
@@ -65,31 +67,65 @@
       <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
       <div class="el-upload__tip" slot="tip">只能上传.zip文件</div>
     </el-upload>
-    <!-- 简历文件名列表 -->
-    <el-table :data="fileList" style="width: 100%; margin-top: 20px;">
-      <el-table-column prop="file_name" label="文件名" min-width="80%" />
-      <el-table-column label="操作" min-width="20%" align="center">
-        <template #default="scope">
-          <el-button type="primary" size="small" @click="changeStatus(scope.row)">已确认</el-button>
-        </template>
-      </el-table-column>
+    <!-- 任务进度表格（无分页，紧贴分页表格上方） -->
+    <el-table v-if="processList.length" :data="processList" style="width: 100%; margin: 10px 0 10px 0;">
+      <el-table-column prop="file_name" label="任务名称" />
+      <el-table-column prop="total_count" label="总任务数" />
+      <el-table-column prop="pending_count" label="剩余任务" />
     </el-table>
-    <el-pagination
-      style="margin-top: 10px; text-align: right"
-      background
-      layout="prev, pager, next"
-      :current-page="page"
-      :page-size="pageSize"
-      :total="total"
-      @current-change="val => { page = val; fetchResumeList() }"
-    />
+    <!-- 标签页 -->
+    <el-tabs v-model="currentTab" @tab-click="switchTab" style="margin-top: 20px;">
+      <el-tab-pane label="处理失败" name="error">
+        <el-table :data="fileList" style="width: 100%;">
+          <el-table-column prop="file_name" label="文件名" min-width="80%" />
+          <el-table-column label="操作" min-width="20%" align="center">
+            <template #default="scope">
+              <el-button type="primary" size="small" @click="changeStatus(scope.row)">已确认</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          style="margin-top: 10px; text-align: right"
+          background
+          layout="prev, pager, next"
+          :current-page="page"
+          :page-size="pageSize"
+          :total="total"
+          @current-change="val => { page = val; fetchResumeList() }"
+        />
+      </el-tab-pane>
+      
+      <el-tab-pane label="重复数据" name="duplicate">
+        <el-table :data="duplicateList" style="width: 100%;">
+          <el-table-column prop="file_name" label="文件名" min-width="50%" />
+          <el-table-column prop="shared_url" label="共享链接" min-width="50%">
+            <template #default="scope">
+              <a :href="scope.row.shared_url" target="_blank" style="color: #409EFF; text-decoration: none;">
+                {{ scope.row.shared_url }}
+              </a>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          style="margin-top: 10px; text-align: right"
+          background
+          layout="prev, pager, next"
+          :current-page="duplicatePage"
+          :page-size="duplicatePageSize"
+          :total="duplicateTotal"
+          @current-change="val => { duplicatePage = val; fetchDuplicateList() }"
+        />
+      </el-tab-pane>
+    </el-tabs>
   </el-main>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
+
+let loadingInstance = null
 
 const uploadUrl = ref('/api/upload-file')
 
@@ -100,14 +136,27 @@ const beforeUpload = (file) => {
   const isZip = file.type === 'application/zip' || file.name.endsWith('.zip')
   if (!isZip) {
     ElMessage.error('只能上传.zip文件')
+    return false
   }
-  return isZip
+  loadingInstance = ElLoading.service({ text: '上传中，请稍候...' })
+  return true
 }
 
 const fileList = ref([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
+
+// 添加重复数据相关变量
+const duplicateList = ref([])
+const duplicateTotal = ref(0)
+const duplicatePage = ref(1)
+const duplicatePageSize = ref(20)
+const currentTab = ref('error') // 'error' 或 'duplicate'
+
+const processList = ref([])
+
+let processTimer = null
 
 const fetchResumeList = async () => {
   try {
@@ -129,7 +178,50 @@ const fetchResumeList = async () => {
   }
 }
 
+// 添加获取重复数据的方法
+const fetchDuplicateList = async () => {
+  try {
+    const res = await axios.get('/api/lark/plugin/hr/list', {
+      params: {
+        page: duplicatePage.value,
+        size: duplicatePageSize.value,
+        status: "duplicate"
+      }
+    })
+    if (res.data.status === 'success') {
+      duplicateList.value = res.data.data.items
+      duplicateTotal.value = res.data.data.total
+      duplicatePage.value = res.data.data.page
+      duplicatePageSize.value = res.data.data.page_size
+    }
+  } catch (e) {
+    ElMessage.error('获取重复数据列表失败')
+  }
+}
+
+// 添加获取进度的方法
+const fetchProcessList = async () => {
+  try {
+    const res = await axios.get('/api/lark/plugin/hr/query-process')
+    if (res.data.status === 'success') {
+      processList.value = res.data.data
+    }
+  } catch (e) {
+    ElMessage.error('获取任务进度失败')
+  }
+}
+
+// 切换标签页的方法
+const switchTab = (tab) => {
+  if (tab.name === 'error') {
+    fetchResumeList()
+  } else if (tab.name === 'duplicate') {
+    fetchDuplicateList()
+  }
+}
+
 const handleSuccess = async (response) => {
+  if (loadingInstance) loadingInstance.close()
   const token = response?.token
   if (!token) {
     ElMessage.error('上传返回结果无效')
@@ -140,9 +232,16 @@ const handleSuccess = async (response) => {
     console.log('二次请求结果:', res.data)
     ElMessage.success('处理成功')
     await fetchResumeList()
+    await fetchDuplicateList()
+    await fetchProcessList() // 新增
   } catch (e) {
     ElMessage.error('二次请求失败')
   }
+}
+
+const handleError = () => {
+  if (loadingInstance) loadingInstance.close()
+  ElMessage.error('上传失败')
 }
 
 const changeStatus = async (row) => {
@@ -173,6 +272,13 @@ const changeStatus = async (row) => {
 
 onMounted(() => {
   fetchResumeList()
+  fetchDuplicateList()
+  fetchProcessList() // 初始化时也获取一次进度
+  processTimer = setInterval(fetchProcessList, 5000)
+})
+
+onUnmounted(() => {
+  if (processTimer) clearInterval(processTimer)
 })
 
 </script>
