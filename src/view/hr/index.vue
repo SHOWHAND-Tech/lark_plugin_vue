@@ -167,7 +167,7 @@ const fetchResumeList = async () => {
         status: "error"
       }
     })
-    if (res.data.status === 'success') {
+    if (res.data.code === 0) {
       fileList.value = res.data.data.items
       total.value = res.data.data.total
       page.value = res.data.data.page
@@ -188,7 +188,7 @@ const fetchDuplicateList = async () => {
         status: "duplicate"
       }
     })
-    if (res.data.status === 'success') {
+    if (res.data.code === 0) {
       duplicateList.value = res.data.data.items
       duplicateTotal.value = res.data.data.total
       duplicatePage.value = res.data.data.page
@@ -203,7 +203,7 @@ const fetchDuplicateList = async () => {
 const fetchProcessList = async () => {
   try {
     const res = await axios.get('/api/lark/plugin/hr/query-process')
-    if (res.data.status === 'success') {
+    if (res.data.code === 0) {
       processList.value = res.data.data
     }
   } catch (e) {
