@@ -222,7 +222,7 @@ const switchTab = (tab) => {
 
 const handleSuccess = async (response) => {
   if (loadingInstance) loadingInstance.close()
-  const token = response?.token
+  const token = response?.data?.token
   if (!token) {
     ElMessage.error('上传返回结果无效')
     return
